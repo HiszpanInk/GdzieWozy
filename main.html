@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWPTM</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+    <style>
+        #map { 
+            height: 95vh; 
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([52.227727, 21.001956], 12);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        var locsMarks = [];
+        async function getData() {
+            const url = 'http://localhost:8090/buses?lines=523';
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Response status: ${response.status}`);
+                }
+
+                const json = await response.json();
+                return await json;
+            } catch (error) {
+                console.error(error.message);
+            }
+        }
+        function addMarkers() {
+            
+            getData().then((result) => {
+                //console.log(new Date().getTime());
+                if(result.result != "Błędna metoda lub parametry wywołania" ) {
+                
+                locsMarks.forEach((element) => element.remove());
+                //console.log(result.result);
+                let locs = (result.result);   
+                for (const [key, value] of Object.entries(locs)) {
+                    locsMarks.push(L.marker([value.Lat, value.Lon]).addTo(map)
+                    .bindPopup(`Brygada: ${value.Brigade}<br>Wóz: ${value.VehicleNumber}`)
+                    
+                );    
+                }
+            } else {
+                console.log("API feels abused, wait 20 seconds for program to ask it nicely for data again");
+            }
+        });
+        }
+        addMarkers();
+        setInterval(addMarkers, 20000);        
+        
+        
+
+        
+
+    </script>
+</body>
+</html>
