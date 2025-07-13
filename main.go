@@ -22,9 +22,9 @@ type apiDependent struct {
 //trzeba tu zrobić żeby mieć zapytanie na konkretne linie, trza też wykombinować żeby można
 //accessować tylko z poziomu serwera
 
-func (ad apiDependent) buses(w http.ResponseWriter, req *http.Request) {
+func (apiDependent apiDependent) buses(w http.ResponseWriter, req *http.Request) {
 
-	answer, err := http.Get(fmt.Sprintf("https://api.um.warszawa.pl/api/action/busestrams_get/?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&apikey=%s&type=1", ad.api_key))
+	answer, err := http.Get(fmt.Sprintf("https://api.um.warszawa.pl/api/action/busestrams_get/?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&apikey=%s&type=1", apiDependent.api_key))
 	req.ParseForm()
 	//lines := req.Form.Get("lines")
 	log.Print(url.Values{}["lines"])
@@ -56,9 +56,9 @@ func main() {
 		fmt.Println("Error processing config file", err)
 		return
 	}
-	ad := apiDependent{api_key: config.API_KEY}
+	apiDependent := apiDependent{api_key: config.API_KEY}
 
-	http.HandleFunc("/buses", ad.buses)
+	http.HandleFunc("/buses", apiDependent.buses)
 	http.HandleFunc("/map", wawmap)
 
 	http.ListenAndServe(":8090", nil)
