@@ -19,9 +19,9 @@ type apiDependent struct {
 	api_key string
 }
 
-//trzeba tu zrobić żeby mieć zapytanie na konkretne linie, trza też wykombinować żeby można
-//accessować tylko z poziomu serwera
-
+// trzeba tu zrobić żeby mieć zapytanie na konkretne linie, trza też wykombinować żeby można
+// accessować tylko z poziomu serwera
+// todo: cache'ing
 func (apiDependent apiDependent) buses(w http.ResponseWriter, req *http.Request) {
 
 	answer, err := http.Get(fmt.Sprintf("https://api.um.warszawa.pl/api/action/busestrams_get/?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&apikey=%s&type=1", apiDependent.api_key))

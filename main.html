@@ -22,14 +22,89 @@
     <div id="map"></div>
     <script>
         var map = L.map('map', {preferCanvas: true}).setView([52.227727, 21.001956], 12);
-        
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-        var vehicles = L.layerGroup().addTo(map);
+        
+        L.VehicleLayer = L.Layer.extend({
+            initialize: function (options) {
+                L.setOptions(this, options);
+                this._points = options.points || [];
+            },
+            onAdd: function (map) {
+                this._map = map;
+                this._canvas = L.DomUtil.create('canvas', 'leaflet-layer');
+                this._canvas.style.position = 'absolute';
+                this._ctx = this._canvas.getContext('2d');
+
+                map.getPanes().overlayPane.appendChild(this._canvas);
+
+                const size = this._map.getSize();
+                this._canvas.height = size.y;
+                this._canvas.width = size.x;
+
+                map.on('zoom viewreset resize move', this._reset, this);
+            },
+            onRemove: function(map) {
+                L.DomUtil.remove(this._canvas);
+                map.off('zoom viewreset resize move', this._reset, this);
+            },
+            setData: function(newPoints) {
+                this._points = newPoints;
+                this._draw();
+            },
+            _reset: function () {
+                const size = this._map.getSize();
+                const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+
+                L.DomUtil.setPosition(this._canvas, topLeft);
+                
+                this._canvas.width = size.x;
+                this._canvas.height = size.y;
+
+                this._draw();
+            },
+            _draw: function() {
+                const ctx = this._ctx;
+                const map = this._map;
+                const size = map.getSize();
+                ctx.clearRect(0, 0, size.x, size.y);
+                for (const obj of this._points) {
+                    const pt = map.latLngToContainerPoint([obj.lat, obj.lon]);
+
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#002860';
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#adadad';
+                    if(obj.label.length < 6) {
+                        ctx.fillRect(pt.x - 15, pt.y - 6, 30, 12);
+                    } else {
+                        ctx.fillRect(pt.x - 21, pt.y - 6, 42, 12);
+                    }
+                    
+
+                    ctx.font = 'bold 10px monospace';
+                    ctx.fillStyle = 'black';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(obj.label, pt.x, pt.y);    
+                }
+            }
+        });
+        L.vehicleLayer = function (options) {
+            return new L.VehicleLayer(options);
+        };
+
+        var points = [];
+        const vehicles = L.layerGroup().addTo(map);
+        const busesLayer = L.vehicleLayer({ points: points });
+        busesLayer.addTo(map);
+
         async function getData() {
-            const url = 'http://localhost:8090/buses?lines=523'; //todo: uniwersalizacja tej linijki
+            const url = '/buses';
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -46,16 +121,21 @@
             //todo: tutaj dodać jakąś ikonkę że się update'uje
             //todo: optymalizacja znaczników
             //todo: aktualizowanie znaczników
+            
             getData().then((result) => {
                 if(result.result != "Błędna metoda lub parametry wywołania" ) {
                     vehicles.clearLayers();
                     let locs = (result.result);   
+                    points = [];
                     for (const [key, value] of Object.entries(locs)) {
-                        vehicles.addLayer(L.circleMarker([value.Lat, value.Lon])
-                            .bindPopup(`Linia: ${value.Lines}<br>Brygada: ${value.Brigade}<br>Wóz: ${value.VehicleNumber}`)
-                            .bindTooltip(`<b>${value.Lines}</b>/${value.Brigade}`, {"direction" : "center", "permanent" : true})//.openTooltip([value.Lat, value.Lon])
-                    );    
+                        points.push({
+                            lat: value.Lat,
+                            lon: value.Lon,
+                            label: `${value.Lines}/${value.Brigade}`
+                        });
                 }
+                busesLayer.setData(points);
+                
             } else {
                 console.log("API feels abused, wait 20 seconds for program to ask it nicely for data again");
             }
